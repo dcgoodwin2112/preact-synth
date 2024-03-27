@@ -74,7 +74,7 @@ export async function synth({ audioCtx }: SynthProps) {
     return await audioCtx.decodeAudioData(arrayBuffer);
   }
   const reverbBuffer = await loadImpulseResponse(
-    `/public/ir/302-SmallHall.wav`
+    `/ir/302-SmallHall.wav`
   );
   const reverb = new ConvolverNode(audioCtx);
   reverb.buffer = reverbBuffer;
