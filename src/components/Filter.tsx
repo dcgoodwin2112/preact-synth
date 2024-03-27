@@ -7,7 +7,6 @@ interface FilterProps {
 export function Filter({ filterSettings }: FilterProps) {
   return (
     <div id="filter">
-      <h2>Filter</h2>
       <fieldset
         id="filter-settings"
         style={{ display: "flex", flexDirection: "column" }}
@@ -26,9 +25,32 @@ export function Filter({ filterSettings }: FilterProps) {
           <option value="highpass">Highpass</option>
         </select>
         <label htmlFor="filter-frequency">Cutoff Frequency</label>
-        <input type="range" id="filter-frequency" min="80" max="6000" value={(filterSettings.frequency.value)} onInput={(e) => {
-           filterSettings.frequency.value = parseFloat((e.target as HTMLInputElement).value);
-        }}/>
+        <input
+          type="range"
+          id="filter-frequency"
+          min="80"
+          max="10000"
+          value={filterSettings.frequency.value}
+          onInput={(e) => {
+            filterSettings.frequency.value = parseFloat(
+              (e.target as HTMLInputElement).value
+            );
+          }}
+        />
+        <label htmlFor="filter-resonance">Resonance</label>
+        <input
+          type="range"
+          id="filter-resonance"
+          min="1"
+          max="40"
+          step=".1"
+          value={filterSettings.resonance.value}
+          onInput={(e) => {
+            filterSettings.resonance.value = parseFloat(
+              (e.target as HTMLInputElement).value
+            );
+          }}
+        />
       </fieldset>
     </div>
   );

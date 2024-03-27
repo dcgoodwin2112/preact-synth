@@ -6,12 +6,8 @@ interface EffectsProps {
 
 export function Effects({ effectsSettings }: EffectsProps) {
   return (
-    <div id="filter">
-      <h2>Effects</h2>
-      <fieldset
-        id="filter-settings"
-        style={{ display: "flex", flexDirection: "column" }}
-      >
+    <div id="effects">
+      <fieldset id="effects-settings">
         <legend>Audio Effects</legend>
         <div>
           <input
@@ -38,6 +34,19 @@ export function Effects({ effectsSettings }: EffectsProps) {
             }}
           />
           <label htmlFor="delay">Delay</label>
+        </div>
+        <div>
+          <input
+            type="checkbox"
+            id="reverb"
+            checked={effectsSettings.reverb.enabled}
+            onInput={(e) => {
+              effectsSettings.reverb.enabled.value = (
+                e.target as HTMLInputElement
+              ).checked;
+            }}
+          />
+          <label htmlFor="reverb">Reverb</label>
         </div>
       </fieldset>
     </div>

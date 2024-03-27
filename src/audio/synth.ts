@@ -21,34 +21,34 @@ const audioSettings: AudioSettings = {
     osc1: {
       type: signal<OscillatorType>("sawtooth"),
       frequency: signal(noteToHz(60)),
-      volume: signal(0.5),
+      volume: signal(0.4),
       detune: signal(0),
     },
     osc2: {
       type: signal<OscillatorType>("sawtooth"),
       frequency: signal(noteToHz(60)),
-      volume: signal(0.5),
+      volume: signal(0.4),
       detune: signal(0),
     },
   },
   filter: {
     type: signal("lowpass"),
-    frequency: signal(3000),
-    resonance: signal(0),
+    frequency: signal(5000),
+    resonance: signal(1),
   },
   envelope: {
     loudness: {
-      attack: signal(0.01),
-      release: signal(0.1),
+      attack: signal(0.05),
+      release: signal(0.22),
     },
     filter: {
-      attack: signal(0.01),
-      release: signal(0.1),
+      attack: signal(0.05),
+      release: signal(0.22),
       amount: signal(0),
     },
   },
   volume: {
-    mainLevel: signal(0.5),
+    mainLevel: signal(0.4),
   },
   effects: {
     delay: {
@@ -61,10 +61,24 @@ const audioSettings: AudioSettings = {
       time: signal(0.3),
       volume: signal(0.3),
     },
+    reverb: {
+      enabled: signal(false),
+    },
   },
 };
 
-export function synth({ audioCtx }: SynthProps) {
+export async function synth({ audioCtx }: SynthProps) {
+  async function loadImpulseResponse(url) {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    return await audioCtx.decodeAudioData(arrayBuffer);
+  }
+  const reverbBuffer = await loadImpulseResponse(
+    `/public/ir/302-SmallHall.wav`
+  );
+  const reverb = new ConvolverNode(audioCtx);
+  reverb.buffer = reverbBuffer;
+
   const compressor = new DynamicsCompressorNode(audioCtx);
   const mainLevel = new GainNode(audioCtx, {
     gain: audioSettings.volume.mainLevel.value,
@@ -74,6 +88,8 @@ export function synth({ audioCtx }: SynthProps) {
   const playNote = (midiNote: number = 60) => {
     const frequency = noteToHz(midiNote);
     const time = audioCtx.currentTime;
+
+    mainLevel.gain.value = audioSettings.volume.mainLevel.value;
 
     //Envelope
     const envelopeGain = new GainNode(audioCtx, { gain: 0.5 });
@@ -93,15 +109,60 @@ export function synth({ audioCtx }: SynthProps) {
     const audioFilter = new BiquadFilterNode(audioCtx, {
       frequency: audioSettings.filter.frequency.value,
       type: audioSettings.filter.type.value,
+      Q: audioSettings.filter.resonance.value,
     });
+    if (audioSettings.envelope.filter.amount.value !== 0) {
+      const envelopeAmt = audioSettings.envelope.filter.amount.value * 100;
+      audioFilter.frequency.setValueAtTime(
+        audioSettings.filter.frequency.value,
+        time
+      );
+      audioFilter.frequency.linearRampToValueAtTime(
+        Math.min(
+          Math.max(audioSettings.filter.frequency.value + envelopeAmt, 0),
+          10000
+        ),
+        time + audioSettings.envelope.filter.attack.value
+      );
+      audioFilter.frequency.linearRampToValueAtTime(
+        audioSettings.filter.frequency.value,
+        time +
+          audioSettings.envelope.filter.attack.value +
+          audioSettings.envelope.filter.release.value
+      );
+    }
+
+    const effectGainLimit = 0.88;
+    //Reverb
+    const reverbInput = new GainNode(audioCtx, { gain: effectGainLimit });
+    const reverbOutput = new GainNode(audioCtx, { gain: effectGainLimit });
+    if (audioSettings.effects.reverb.enabled.value) {
+      const reverbVolume = 0.21;
+      const reverbTime = 2.66;
+      const reverbPreGain = new GainNode(audioCtx, { gain: reverbVolume });
+      const reverbWetGain = new GainNode(audioCtx, { gain: reverbVolume });
+      const reverbDryGain = new GainNode(audioCtx, { gain: effectGainLimit });
+      reverbInput.connect(reverb);
+      reverb.connect(reverbWetGain);
+      reverbWetGain.connect(reverbOutput);
+      reverbInput.connect(reverbDryGain);
+      reverbDryGain.connect(reverbOutput);
+      reverbPreGain.gain.linearRampToValueAtTime(0, time + reverbTime);
+      reverbWetGain.gain.linearRampToValueAtTime(0, time + reverbTime);
+    } else {
+      reverbInput.connect(reverbOutput);
+    }
 
     //Delay
+    const delayInput = new GainNode(audioCtx, { gain: effectGainLimit });
+    const delayOutput = new GainNode(audioCtx, { gain: effectGainLimit });
     if (audioSettings.effects.delay.enabled.value) {
       const delayVolume = 0.3;
       const delayTime = 60 / audioSettings.global.tempo.value;
       const delay = new DelayNode(audioCtx, { delayTime: delayTime });
       const delayGain = new GainNode(audioCtx, { gain: delayVolume });
-      const wetGain = new GainNode(audioCtx, { gain: delayVolume });
+      const delayWetGain = new GainNode(audioCtx, { gain: delayVolume });
+      const delayDryGain = new GainNode(audioCtx, { gain: effectGainLimit });
       const delayFilter = new BiquadFilterNode(audioCtx, { frequency: 1750 });
 
       const lfo = new OscillatorNode(audioCtx, {
@@ -114,40 +175,58 @@ export function synth({ audioCtx }: SynthProps) {
       lfoGain.connect(delayFilter.frequency);
       lfo.start();
 
-      envelopeGain.connect(delayFilter);
+      delayInput.connect(delayFilter);
       delayFilter.connect(delay);
       delay.connect(delayGain);
       delayGain.connect(delayFilter);
-      delay.connect(wetGain);
-      wetGain.connect(compressor);
+      delay.connect(delayWetGain);
+      delayWetGain.connect(delayOutput);
+      delayInput.connect(delayDryGain);
+      delayDryGain.connect(delayOutput);
+    } else {
+      delayInput.connect(delayOutput);
     }
 
     //Chorus
+    const chorusInput = new GainNode(audioCtx, { gain: effectGainLimit });
+    const chorusOutput = new GainNode(audioCtx, { gain: effectGainLimit });
     if (audioSettings.effects.chorus.enabled.value) {
-      const chorusDelay = new DelayNode(audioCtx, { delayTime: 15 / 1000 });
-      const chorusGain = new GainNode(audioCtx, { gain: 0.4 });
-      const chorusFilter = new BiquadFilterNode(audioCtx, { frequency: 4550 });
+      const chorusDelay1 = new DelayNode(audioCtx, { delayTime: 0.004 });
+      const chorusDelay2 = new DelayNode(audioCtx, { delayTime: 0.008 });
+      const chorusDelay3 = new DelayNode(audioCtx, { delayTime: 0.012 });
+      const chorusWetGain = new GainNode(audioCtx, { gain: 0.66 });
+      const chorusDryGain = new GainNode(audioCtx, { gain: 0.66 });
 
       const chorusLfo = new OscillatorNode(audioCtx, {
         type: "sine",
-        frequency: 0.55,
+        frequency: 0.5,
       });
-      const chorusLfoGain = new GainNode(audioCtx, { gain: 0.0043 });
+
+      const chorusLfoGain = new GainNode(audioCtx, { gain: 0.002 });
       chorusLfo.connect(chorusLfoGain);
-      chorusLfoGain.connect(chorusDelay.delayTime);
-      chorusLfoGain.connect(chorusFilter.frequency);
+      chorusLfoGain.connect(chorusDelay1.delayTime);
       chorusLfo.start();
 
-      envelopeGain.connect(chorusFilter);
-      chorusFilter.connect(chorusDelay);
-      chorusDelay.connect(chorusGain);
-      chorusGain.connect(mainLevel);
+      chorusInput.connect(chorusDelay1);
+      chorusDelay1.connect(chorusDelay2);
+      chorusDelay2.connect(chorusDelay3);
+      chorusDelay3.connect(chorusWetGain);
+      chorusWetGain.connect(chorusOutput);
+      chorusInput.connect(chorusDryGain);
+      chorusDryGain.connect(chorusOutput);
+    } else {
+      chorusInput.connect(chorusOutput);
     }
-    
+
+    // Effects Chain
+    envelopeGain.connect(chorusInput);
+    chorusOutput.connect(delayInput);
+    delayOutput.connect(reverbInput);
+    reverbOutput.connect(mainLevel);
+
     audioFilter.connect(envelopeGain);
-    envelopeGain.connect(compressor);
-    compressor.connect(mainLevel);
-    mainLevel.connect(audioCtx.destination);
+    mainLevel.connect(compressor);
+    compressor.connect(audioCtx.destination);
 
     //Oscillator 1 Settings
     const osc1 = new OscillatorNode(audioCtx, {

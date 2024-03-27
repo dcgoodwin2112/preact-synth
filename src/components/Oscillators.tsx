@@ -10,12 +10,8 @@ interface OscProps {
 
 export function Oscillators({ oscSettings }: OscProps) {
   return (
-    <div id="oscillators">
-      <h2>Oscillators</h2>
-      <div
-        className="flex-container"
-        style={{ display: "flex", justifyContent: "space-around" }}
-      >
+    <>
+    <div>
         <fieldset
           id="oscillator-1"
           style={{ display: "flex", flexDirection: "column" }}
@@ -51,6 +47,7 @@ export function Oscillators({ oscSettings }: OscProps) {
           <input
             type="range"
             id="osc1-detune"
+            list="osc1-detune-markers"
             min="-25"
             max="25"
             value={oscSettings.osc1.detune.value}
@@ -60,7 +57,16 @@ export function Oscillators({ oscSettings }: OscProps) {
               );
             }}
           />
+          <datalist id="osc1-detune-markers">
+            <option value="-20"></option>
+            <option value="-10"></option>
+            <option value="0"></option>
+            <option value="10"></option>
+            <option value="20"></option>
+          </datalist>
         </fieldset>
+        </div>
+        <div>
         <fieldset
           id="oscillator-2"
           style={{ display: "flex", flexDirection: "column" }}
@@ -96,6 +102,7 @@ export function Oscillators({ oscSettings }: OscProps) {
           <input
             type="range"
             id="osc2-detune"
+            list="osc2-detune-markers"
             min="-25"
             max="25"
             value={oscSettings.osc2.detune.value}
@@ -105,8 +112,15 @@ export function Oscillators({ oscSettings }: OscProps) {
               );
             }}
           />
+          <datalist id="osc2-detune-markers">
+            <option value="-20"></option>
+            <option value="-10"></option>
+            <option value="0"></option>
+            <option value="10"></option>
+            <option value="20"></option>
+          </datalist>
         </fieldset>
-      </div>
-    </div>
+        </div>
+      </>
   );
 }

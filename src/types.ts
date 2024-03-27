@@ -17,13 +17,13 @@ export type OscillatorSettings = {
     frequency: Signal<number>;
     volume: Signal<number>;
     detune: Signal<number>;
-  },
+  };
   osc2: {
     type: Signal<OscillatorType>;
     frequency: Signal<number>;
     volume: Signal<number>;
     detune: Signal<number>;
-  }
+  };
 };
 
 export type FilterSettings = {
@@ -36,33 +36,36 @@ export type EnvelopeSettings = {
   loudness: {
     attack: Signal<number>;
     release: Signal<number>;
-  },
+  };
   filter: {
     attack: Signal<number>;
     release: Signal<number>;
     amount: Signal<number>;
-  }
+  };
 };
 
 export type VolumeSettings = {
   mainLevel: Signal<number>;
 };
 
-export type EffectsSettings = { 
+export type EffectsSettings = {
   delay: {
     enabled: Signal<boolean>;
     time: Signal<number>;
     volume: Signal<number>;
-  },
+  };
   chorus: {
     enabled: Signal<boolean>;
     time: Signal<number>;
     volume: Signal<number>;
-  }
+  };
+  reverb: {
+    enabled: Signal<boolean>;
+  };
 };
 
 export type AudioSettings = {
-  global: GlobalSettings,
+  global: GlobalSettings;
   oscillators: OscillatorSettings;
   filter: FilterSettings;
   envelope: EnvelopeSettings;

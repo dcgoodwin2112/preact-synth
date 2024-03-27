@@ -6,9 +6,7 @@ interface MainOutputProps {
 
 export function MainOutput({ volumeSettings }: MainOutputProps) {
   return (
-    <div>
       <div id="main-output">
-        <h2>Main Output</h2>
         <fieldset
           id="main-output-settings"
           style={{ display: "flex", flexDirection: "column" }}
@@ -28,6 +26,5 @@ export function MainOutput({ volumeSettings }: MainOutputProps) {
           />
         </fieldset>
       </div>
-    </div>
   );
 }
